@@ -147,26 +147,39 @@ class Main:
         self.fruit = Fruit()
         self.game_state = 'start'
 
-        # Create start button
+        # start button
         button_width, button_height = 200, 50
         button_x = (cell_number * cell_size - button_width) // 2
         button_y = (cell_number * cell_size - button_height) // 2
         self.start_button = Button(button_x, button_y, button_width, button_height, 
                                    'Start Game', (0, 255, 0), (0, 0, 0))
         
-        # Create reset button
+        # reset button
         self.reset_button = Button(button_x, button_y, button_width, button_height, 
                                    'Start Again', (255, 0, 0), (255, 255, 255))
 
+        self.countdown = 4
+        self.last_countdown_tick = None
     def update(self):
-        self.snake.move_snake() 
-        self.snake2.move_snake()
-        self.check_collition()
-        self.check_fail()
+        if self.game_state == 'countdown':
+            # Handle countdown timer
+            current_time = pygame.time.get_ticks()
+            if self.last_countdown_tick is None or current_time - self.last_countdown_tick >= 1000:
+                self.countdown -= 1
+                self.last_countdown_tick = current_time
+                if self.countdown <= 0:
+                    self.game_state = 'playing'
+        elif self.game_state == 'playing':
+            self.snake.move_snake() 
+            self.snake2.move_snake()
+            self.check_collition()
+            self.check_fail()
     def draw_elements(self):
         self.draw_grass()
         if self.game_state == 'start':
             self.start_button.draw(screen)
+        elif self.game_state == 'countdown':
+            self.draw_countdown()
         elif self.game_state == 'playing':
             self.fruit.draw_fruit()
             self.snake.draw_snake()
@@ -174,6 +187,10 @@ class Main:
         elif self.game_state == 'game_over':
             self.reset_button.draw(screen)
         # self.draw_score()
+    def draw_countdown(self):
+        countdown_text = game_font.render(str(self.countdown), True, (255, 255, 255))
+        countdown_rect = countdown_text.get_rect(center=(cell_number * cell_size // 2, cell_number * cell_size // 2))
+        screen.blit(countdown_text, countdown_rect)
     def check_collition(self):
         if self.fruit.pos == self.snake.body[0]:
             # print("snack")
@@ -218,7 +235,12 @@ class Main:
         self.snake.reset(start_position=(3,10), player_number=1)
         self.snake2.reset(start_position=(22,10), player_number=2)
         self.fruit.randomize()
-        self.game_state = 'playing'
+        self.start_countdown()
+
+    def start_countdown(self):
+        self.game_state = 'countdown'
+        self.countdown = 4
+        self.last_countdown_tick = None
 
     def draw_grass(self):
         grass_color = (167,209,61)
@@ -274,7 +296,7 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if main_game.game_state == 'start':
                 if main_game.start_button.is_clicked(event.pos):
-                    main_game.game_state = 'playing'
+                    main_game.start_countdown()
             elif main_game.game_state == 'game_over':
                 if main_game.reset_button.is_clicked(event.pos):
                     main_game.reset_game()
@@ -312,8 +334,15 @@ while True:
                     if main_game.snake2.direction.x != 1:
                         main_game.snake2.direction = Vector2(-1,0)
 
+    if main_game.game_state in ['countdown']:
+        main_game.update()
+
     screen.fill((175,215,70))
-    main_game.draw_elements()
+    if main_game.game_state == 'countdown':
+        main_game.draw_grass()
+        main_game.draw_countdown()
+    else:
+        main_game.draw_elements()
     pygame.display.update()
     clock.tick(60) # while loop wount run more than 60times a second
 
